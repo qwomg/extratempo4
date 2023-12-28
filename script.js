@@ -1,4 +1,30 @@
+let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+let accentedBuffer, unaccentedBuffer;
+
+// Load the audio files
+async function preloadSounds() {
+    accentedBuffer = await loadAudioBuffer('sounds/accented_beep.mp3');
+    unaccentedBuffer = await loadAudioBuffer('sounds/unaccented_beep.mp3');
+}
+
+async function loadAudioBuffer(url) {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    return audioContext.decodeAudioData(arrayBuffer);
+}
+let scheduledSounds = [];
+function playSound(buffer, time) {
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+    source.start(time);
+
+    // Keep track of the scheduled source
+    scheduledSounds.push({ source, time });
+}
+
 document.addEventListener("DOMContentLoaded", function() {
+
     const beatsContainer = document.getElementById('beats-container');
     const tempoSlider = document.getElementById('tempo-slider');
     const tempoValueDisplay = document.getElementById('tempo-value');
@@ -8,10 +34,9 @@ document.addEventListener("DOMContentLoaded", function() {
     let currentBeatIndex = 0;
     let beats = [];
     let beatInterval;
+    
 
-    const accentedSound = new Audio('sounds/accented_beep.mp3');
-    const unaccentedSound = new Audio('sounds/unaccented_beep.mp3');
-
+    let beatTimeout;
 
     function loadSettings() {
         const storedBeats = localStorage.getItem('beats');
@@ -124,49 +149,72 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     startStopBtn.addEventListener('click', () => {
+        // Check if AudioContext is in a suspended state
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+
         if (isPlaying) {
             stopMetronome();
         } else {
             startMetronome();
         }
     });
-
     function startMetronome() {
-        if (isPlaying) return; // Prevent multiple intervals if already playing
+        if (isPlaying) return;
         isPlaying = true;
         startStopBtn.textContent = 'Stop';
-        playBeat(currentBeatIndex); // Play the first beat immediately
-        highlightCurrentBeat(currentBeatIndex); // Highlight the first beat
-        currentBeatIndex = (currentBeatIndex + 1) % beats.length; // Move to the next beat
-
-        beatInterval = setInterval(() => {
-            playBeat(currentBeatIndex);
-            highlightCurrentBeat(currentBeatIndex);
-            currentBeatIndex = (currentBeatIndex + 1) % beats.length;
-        }, 60000 / tempoSlider.value);
+    
+        let nextBeatTime = audioContext.currentTime;
+        scheduleBeats(nextBeatTime);
     }
+
+    function scheduleBeats(time) {
+        const beatDuration = 60 / tempoSlider.value;
+    
+        while (time < audioContext.currentTime + 0.1) {
+            playBeat(currentBeatIndex, time);
+            currentBeatIndex = (currentBeatIndex + 1) % beats.length;
+            time += beatDuration;
+        }
+    
+        beatTimeout = setTimeout(() => scheduleBeats(time), beatDuration / 2 * 1000);
+    }
+    
     function stopMetronome() {
-        if (!isPlaying) return; // Do nothing if it's already stopped
-        clearInterval(beatInterval);
+        if (!isPlaying) return;
         isPlaying = false;
         startStopBtn.textContent = 'Start';
-        clearBeatHighlighting(); // Remove highlighting from all beats
-        currentBeatIndex = 0; // Reset the beat index
+    
+        // Stop and clear all scheduled sounds
+        scheduledSounds.forEach(({ source, time }) => {
+            if (time > audioContext.currentTime) {
+                source.stop();
+            }
+        });
+        scheduledSounds = []; // Reset the scheduled sounds
+    
+        clearTimeout(beatTimeout);
+        currentBeatIndex = 0;
+        audioContext.suspend();
     }
     function clearBeatHighlighting() {
         for (let child of beatsContainer.children) {
             child.classList.remove('beat-playing');
         }
     }
-    function playBeat(index) {
-        if (beats[index].type === 'accented') {
-            accentedSound.currentTime = 0;
-            accentedSound.play();
-        } else if (beats[index].type === 'normal') {
-            unaccentedSound.currentTime = 0;
-            unaccentedSound.play();
+    function playBeat(index, time) {
+        const beat = beats[index];
+        if (beat.type === 'accented') {
+            playSound(accentedBuffer, time);
+        } else if (beat.type === 'normal') {
+            playSound(unaccentedBuffer, time);
         }
+        // Muted beats don't play sound
+        highlightCurrentBeat(index);
     }
+    
+    preloadSounds();
     loadSettings();
     renderBeats();
 });
