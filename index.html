@@ -50,10 +50,11 @@
                 <input type="number" id="num-beats" min="1" max="300" value="4" class="form-control mb-3 w-25 mx-auto">
         
                 <div id="beats-container" class="d-flex flex-wrap justify-content-center"></div>
-                <div class="slider mt-3">
+                <div class="slider mt-3 d-flex align-items-center">
                     <input type="range" id="tempo-slider" min="20" max="600" value="120" class="custom-range">
-                    <span id="tempo-value" class="ml-2">120</span> BPM <!-- Display for tempo value -->
+                    <input type="number" id="tempo-input" min="20" max="600" value="120" class="form-control ml-2" style="width: 80px;">
                 </div>
+                
                 <button id="start-stop-btn" class="btn btn-primary mt-3">Start</button>
             </div>
         </div>

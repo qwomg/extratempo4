@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const beatsContainer = document.getElementById('beats-container');
     const tempoSlider = document.getElementById('tempo-slider');
-    const tempoValueDisplay = document.getElementById('tempo-value');
+    const tempoInput = document.getElementById('tempo-input');
     const numBeatsInput = document.getElementById('num-beats');
     const startStopBtn = document.getElementById('start-stop-btn');
     let isPlaying = false;
@@ -38,16 +38,20 @@ document.addEventListener("DOMContentLoaded", function() {
 
     let beatTimeout;
 
-    function loadSettings() {
-        const storedBeats = localStorage.getItem('beats');
-        const storedTempo = localStorage.getItem('tempo');
-        beats = storedBeats ? JSON.parse(storedBeats) : new Array(4).fill({ type: 'normal', sound: 'default' });
-        tempoSlider.value = storedTempo || 120;
-        tempoValueDisplay.textContent = tempoSlider.value; // Display the tempo
-        numBeatsInput.value = beats.length; // Set the number of beats
-        renderBeats();
-        saveSettings();
+function loadSettings() {
+    const storedBeats = localStorage.getItem('beats');
+    const storedTempo = localStorage.getItem('tempo');
+    if (storedBeats) {
+        beats = JSON.parse(storedBeats).map(beat => ({ ...beat })); // Create a new object for each beat
+    } else {
+        beats = new Array(4).fill(null).map(() => ({ type: 'normal', sound: 'default' }));
     }
+    tempoSlider.value = storedTempo || 120;
+    tempoInput.value = tempoSlider.value;
+    numBeatsInput.value = beats.length;
+    renderBeats();
+    saveSettings();
+}
 
     function loadBeats() {
         const storedBeats = localStorage.getItem('beats');
@@ -65,18 +69,15 @@ document.addEventListener("DOMContentLoaded", function() {
         renderBeats();
         saveSettings();
     });
-        // Adjust the beats array when the number of beats is changed
-        function adjustBeatsArray(newNumBeats) {
-            if (newNumBeats > beats.length) {
-                // Add new beats with default settings
-                for (let i = beats.length; i < newNumBeats; i++) {
-                    beats.push({ type: 'normal', sound: 'unaccented' });
-                }
-            } else {
-                // Remove beats if necessary
-                beats.length = newNumBeats;
+    function adjustBeatsArray(newNumBeats) {
+        if (newNumBeats > beats.length) {
+            for (let i = beats.length; i < newNumBeats; i++) {
+                beats.push({ type: 'normal', sound: 'unaccented' }); // Each new beat is a distinct object
             }
+        } else if (newNumBeats < beats.length) {
+            beats.length = newNumBeats;
         }
+    }
 
     function saveSettings() {
         localStorage.setItem('beats', JSON.stringify(beats));
@@ -84,41 +85,45 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function renderBeats() {
+        // Remove existing event listeners by replacing the container
         beatsContainer.innerHTML = '';
+        
         beats.forEach((beat, index) => {
             const beatElement = document.createElement('div');
-            beatElement.classList.add('beat', 'p-2', 'rounded', 'text-white', 'text-center', 'm-1', 'cursor-pointer', 'beat-normal');
+            beatElement.classList.add('beat', 'p-2', 'rounded', 'text-white', 'text-center', 'm-1', 'cursor-pointer');
             beatElement.textContent = index + 1;
             beatElement.style.width = '40px'; // Fixed width for beat blocks
             beatElement.style.height = '40px'; // Fixed height for beat blocks
-            beatElement.dataset.index = index;
-            beatElement.dataset.type = beat.type;
-            beatsContainer.appendChild(beatElement);
-
-            beatElement.addEventListener('click', () => {
-                toggleBeatType(beat, beatElement);
-            });
             applyBeatStylesForElement(beat, beatElement);
+    
+            // Add event listener for each beat
+            beatElement.addEventListener('click', () => {
+                toggleBeatType(index);
+            });
+    
+            beatsContainer.appendChild(beatElement);
         });
-        applyBeatStyles();
     }
     function applyBeatStylesForElement(beat, beatElement) {
-        // Clear all classes
-        beatElement.className = ''; 
-        beatElement.classList.add('beat', 'p-2', 'rounded', 'text-white', 'text-center', 'm-1', 'cursor-pointer');
-        // Add type specific classes
+        beatElement.className = 'beat p-2 rounded text-white text-center m-1 cursor-pointer';
         beatElement.classList.add(`beat-${beat.type}`);
     }
     tempoSlider.addEventListener('input', function() {
-        tempoValueDisplay.textContent = tempoSlider.value; // Update the display as the slider moves
+        tempoInput.value = tempoSlider.value;
         saveSettings();
     });
-    function toggleBeatType(beat, beatElement) {
+    tempoInput.addEventListener('input', function() {
+        tempoSlider.value = tempoInput.value;
+        // Update the metronome tempo here if it's running
+    });
+    function toggleBeatType(index) {
         const types = ['normal', 'accented', 'muted'];
-        let nextTypeIndex = (types.indexOf(beat.type) + 1) % types.length;
-        beat.type = types[nextTypeIndex];
-        applyBeatStylesForElement(beat, beatElement);
-        saveSettings();
+        if (index >= 0 && index < beats.length) { // Check if the index is valid
+            let currentTypeIndex = types.indexOf(beats[index].type);
+            beats[index].type = types[(currentTypeIndex + 1) % types.length];
+            applyBeatStylesForElement(beats[index], beatsContainer.children[index]);
+            saveSettings();
+        }
     }
     function applyBeatStyles() {
         beats.forEach((beat, index) => {
