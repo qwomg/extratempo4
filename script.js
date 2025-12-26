@@ -14,10 +14,16 @@ async function loadAudioBuffer(url) {
     return audioContext.decodeAudioData(arrayBuffer);
 }
 
-function playSound(buffer, time) {
+function playSound(buffer, time, volume = 1.0) {
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
-    source.connect(audioContext.destination);
+
+    // Create gain node for volume control
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = volume;
+
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
     source.start(time);
 
     // Keep track of the scheduled source
@@ -91,6 +97,7 @@ document.addEventListener("DOMContentLoaded", function () {
             beatElement.textContent = index + 1;
             beatElement.style.width = '40px';
             beatElement.style.height = '40px';
+            beatElement.dataset.beatIndex = index;
 
             // Apply the existing style for each beat
             applyBeatStylesForElement(beat, beatElement);
@@ -114,13 +121,16 @@ document.addEventListener("DOMContentLoaded", function () {
             // Long press to toggle line break (mobile)
             let longPressTimer;
             let touchStarted = false;
+            let longPressTriggered = false;
 
             beatElement.addEventListener('touchstart', (e) => {
                 touchStarted = true;
+                longPressTriggered = false;
                 // Prevent text selection immediately
                 e.preventDefault();
                 longPressTimer = setTimeout(() => {
                     if (touchStarted) {
+                        longPressTriggered = true;
                         toggleLineBreak(index);
                         // Vibrate if available to give feedback
                         if (navigator.vibrate) {
@@ -132,7 +142,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             beatElement.addEventListener('touchend', () => {
                 clearTimeout(longPressTimer);
+                // If it was a short tap (not a long press), toggle beat type
+                if (touchStarted && !longPressTriggered) {
+                    toggleBeatType(index);
+                }
                 touchStarted = false;
+                longPressTriggered = false;
             });
 
             beatElement.addEventListener('touchmove', () => {
@@ -171,8 +186,10 @@ document.addEventListener("DOMContentLoaded", function () {
         beats[index].type = types[(currentTypeIndex + 1) % types.length];
 
         // Re-apply styles to just the toggled beat
-        const beatEl = beatsContainer.children[index];
-        applyBeatStylesForElement(beats[index], beatEl);
+        const beatEl = beatsContainer.querySelector(`[data-beat-index="${index}"]`);
+        if (beatEl) {
+            applyBeatStylesForElement(beats[index], beatEl);
+        }
 
         // Save updated beats
         saveSettings();
@@ -186,7 +203,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function highlightCurrentBeat(index) {
         clearBeatHighlighting();
-        beatsContainer.children[index].classList.add('beat-playing');
+        const beatElement = beatsContainer.querySelector(`[data-beat-index="${index}"]`);
+        if (beatElement) {
+            beatElement.classList.add('beat-playing');
+        }
     }
 
     document.getElementById('num-beats').addEventListener('change', (event) => {
@@ -259,6 +279,7 @@ document.addEventListener("DOMContentLoaded", function () {
             highlightCurrentBeat(index);
 
             let buffer;
+            let volume = 1.0;
 
             switch (beat.type) {
                 case 'accented':
@@ -269,13 +290,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     break;
                 case 'soft':
                     buffer = unaccentedBuffer;
+                    volume = 0.3;
                     break;
                 case 'muted':
                     // Muted beats don't play sound, but are still highlighted
                     return;
             }
 
-            playSound(buffer, time);
+            playSound(buffer, time, volume);
         }
     }
 
