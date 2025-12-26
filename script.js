@@ -14,10 +14,16 @@ async function loadAudioBuffer(url) {
     return audioContext.decodeAudioData(arrayBuffer);
 }
 
-function playSound(buffer, time) {
+function playSound(buffer, time, volume = 1.0) {
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
-    source.connect(audioContext.destination);
+
+    // Create gain node for volume control
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = volume;
+
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
     source.start(time);
 
     // Keep track of the scheduled source
@@ -273,6 +279,7 @@ document.addEventListener("DOMContentLoaded", function () {
             highlightCurrentBeat(index);
 
             let buffer;
+            let volume = 1.0;
 
             switch (beat.type) {
                 case 'accented':
@@ -283,13 +290,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     break;
                 case 'soft':
                     buffer = unaccentedBuffer;
+                    volume = 0.3;
                     break;
                 case 'muted':
                     // Muted beats don't play sound, but are still highlighted
                     return;
             }
 
-            playSound(buffer, time);
+            playSound(buffer, time, volume);
         }
     }
 
