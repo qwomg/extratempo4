@@ -44,6 +44,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     let beatTimeout;
+    let lastScheduledTime = 0;
+    let lastTempo = null;
 
     function loadSettings() {
         const storedBeats = localStorage.getItem('beats');
@@ -238,10 +240,29 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function scheduleBeats(time) {
-        const beatDuration = 60 / tempoSlider.value;
+        const currentTempo = parseFloat(tempoSlider.value);
+        const beatDuration = 60 / currentTempo;
+
+        // If tempo changed mid-playback, recalculate next beat time
+        // to maintain proper spacing from the last scheduled beat
+        if (lastTempo !== null && lastTempo !== currentTempo && lastScheduledTime > 0) {
+            const newBeatDuration = beatDuration;
+            // Next beat should be at lastScheduledTime + newBeatDuration
+            const nextBeatTime = lastScheduledTime + newBeatDuration;
+            // If that time is in the past, find the next valid beat time
+            if (nextBeatTime < audioContext.currentTime) {
+                const elapsed = audioContext.currentTime - lastScheduledTime;
+                const beatsPassed = Math.ceil(elapsed / newBeatDuration);
+                time = lastScheduledTime + (beatsPassed * newBeatDuration);
+            } else {
+                time = nextBeatTime;
+            }
+        }
+        lastTempo = currentTempo;
 
         while (time < audioContext.currentTime + 0.1) {
             playBeat(currentBeatIndex, time);
+            lastScheduledTime = time;
             currentBeatIndex = (currentBeatIndex + 1) % beats.length;
             time += beatDuration;
         }
@@ -264,6 +285,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         clearTimeout(beatTimeout);
         currentBeatIndex = 0;
+        lastScheduledTime = 0;
+        lastTempo = null;
         audioContext.suspend();
     }
     function clearBeatHighlighting() {
@@ -300,6 +323,53 @@ document.addEventListener("DOMContentLoaded", function () {
             playSound(buffer, time, volume);
         }
     }
+
+    // Reset button with confirmation
+    const resetBtn = document.getElementById('reset-btn');
+    let resetConfirmPending = false;
+    let resetConfirmTimeout;
+
+    resetBtn.addEventListener('click', () => {
+        if (resetConfirmPending) {
+            // User confirmed - do the reset
+            clearTimeout(resetConfirmTimeout);
+            resetConfirmPending = false;
+            resetBtn.textContent = 'Reset';
+            resetBtn.classList.remove('btn-danger');
+            resetBtn.classList.add('btn-outline-danger');
+
+            // Stop metronome if playing
+            if (isPlaying) {
+                stopMetronome();
+            }
+
+            // Reset to defaults
+            beats = new Array(4).fill(null).map(() => ({ type: 'normal', sound: 'default', lineBreak: false }));
+            tempoSlider.value = 120;
+            tempoInput.value = 120;
+            numBeatsInput.value = 4;
+
+            // Clear localStorage and re-render
+            localStorage.removeItem('beats');
+            localStorage.removeItem('tempo');
+            renderBeats();
+            clearBeatHighlighting();
+        } else {
+            // First click - ask for confirmation
+            resetConfirmPending = true;
+            resetBtn.textContent = 'Are you sure?';
+            resetBtn.classList.remove('btn-outline-danger');
+            resetBtn.classList.add('btn-danger');
+
+            // Revert after 3 seconds if not confirmed
+            resetConfirmTimeout = setTimeout(() => {
+                resetConfirmPending = false;
+                resetBtn.textContent = 'Reset';
+                resetBtn.classList.remove('btn-danger');
+                resetBtn.classList.add('btn-outline-danger');
+            }, 3000);
+        }
+    });
 
     preloadSounds();
     loadSettings();
