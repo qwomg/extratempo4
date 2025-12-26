@@ -100,12 +100,47 @@ document.addEventListener("DOMContentLoaded", function () {
                 beatElement.classList.add('beat-has-break');
             }
 
-            // Left click to toggle beat type
-            beatElement.addEventListener('click', () => {
-                toggleBeatType(index);
+            // Long press timer for mobile
+            let longPressTimer;
+            let isLongPress = false;
+
+            // Touch start - begin long press detection
+            beatElement.addEventListener('touchstart', (e) => {
+                isLongPress = false;
+                longPressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    // Haptic feedback if available
+                    if (navigator.vibrate) {
+                        navigator.vibrate(50);
+                    }
+                    toggleLineBreak(index);
+                }, 500); // 500ms for long press
             });
 
-            // Right click to toggle line break
+            // Touch move - cancel long press if user is scrolling
+            beatElement.addEventListener('touchmove', () => {
+                clearTimeout(longPressTimer);
+                isLongPress = false;
+            });
+
+            // Touch end - toggle beat type if not a long press
+            beatElement.addEventListener('touchend', (e) => {
+                clearTimeout(longPressTimer);
+                if (!isLongPress) {
+                    toggleBeatType(index);
+                }
+                e.preventDefault(); // Prevent click event from firing
+            });
+
+            // Left click to toggle beat type (desktop)
+            beatElement.addEventListener('click', (e) => {
+                // Only handle if not from a touch event
+                if (e.pointerType !== 'touch') {
+                    toggleBeatType(index);
+                }
+            });
+
+            // Right click to toggle line break (desktop)
             beatElement.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 toggleLineBreak(index);
