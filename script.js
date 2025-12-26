@@ -117,9 +117,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             beatElement.addEventListener('touchstart', (e) => {
                 touchStarted = true;
+                // Prevent text selection immediately
+                e.preventDefault();
                 longPressTimer = setTimeout(() => {
                     if (touchStarted) {
-                        e.preventDefault();
                         toggleLineBreak(index);
                         // Vibrate if available to give feedback
                         if (navigator.vibrate) {
