@@ -29,7 +29,13 @@
     background-color: #17a2b8; /* Bootstrap info/cyan color for soft beats */
 }
 
-.beat {cursor:pointer}
+.beat {
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
 
 .beat-has-break::after {
     content: '⏎';
