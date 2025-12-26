@@ -115,13 +115,16 @@ document.addEventListener("DOMContentLoaded", function () {
             // Long press to toggle line break (mobile)
             let longPressTimer;
             let touchStarted = false;
+            let longPressTriggered = false;
 
             beatElement.addEventListener('touchstart', (e) => {
                 touchStarted = true;
+                longPressTriggered = false;
                 // Prevent text selection immediately
                 e.preventDefault();
                 longPressTimer = setTimeout(() => {
                     if (touchStarted) {
+                        longPressTriggered = true;
                         toggleLineBreak(index);
                         // Vibrate if available to give feedback
                         if (navigator.vibrate) {
@@ -133,7 +136,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
             beatElement.addEventListener('touchend', () => {
                 clearTimeout(longPressTimer);
+                // If it was a short tap (not a long press), toggle beat type
+                if (touchStarted && !longPressTriggered) {
+                    toggleBeatType(index);
+                }
                 touchStarted = false;
+                longPressTriggered = false;
             });
 
             beatElement.addEventListener('touchmove', () => {
