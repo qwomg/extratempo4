@@ -43,9 +43,13 @@ document.addEventListener("DOMContentLoaded", function () {
         const storedBeats = localStorage.getItem('beats');
         const storedTempo = localStorage.getItem('tempo');
         if (storedBeats) {
-            beats = JSON.parse(storedBeats).map(beat => ({ ...beat })); // Create a new object for each beat
+            beats = JSON.parse(storedBeats).map(beat => ({
+                type: beat.type || 'normal',
+                sound: beat.sound || 'default',
+                lineBreak: beat.lineBreak || false
+            }));
         } else {
-            beats = new Array(4).fill(null).map(() => ({ type: 'normal', sound: 'default' }));
+            beats = new Array(4).fill(null).map(() => ({ type: 'normal', sound: 'default', lineBreak: false }));
         }
         tempoSlider.value = storedTempo || 120;
         tempoInput.value = tempoSlider.value;
@@ -69,7 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Fill remaining with defaults
         for (let i = existingBeats.length; i < newNumBeats; i++) {
-            beats[i] = { type: 'normal', sound: 'default' };
+            beats[i] = { type: 'normal', sound: 'default', lineBreak: false };
         }
     }
 
@@ -91,11 +95,30 @@ document.addEventListener("DOMContentLoaded", function () {
             // Apply the existing style for each beat
             applyBeatStylesForElement(beat, beatElement);
 
+            // Add line break indicator if this beat has a line break
+            if (beat.lineBreak) {
+                beatElement.classList.add('beat-has-break');
+            }
+
+            // Left click to toggle beat type
             beatElement.addEventListener('click', () => {
                 toggleBeatType(index);
             });
 
+            // Right click to toggle line break
+            beatElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                toggleLineBreak(index);
+            });
+
             beatsContainer.appendChild(beatElement);
+
+            // Insert line break element if needed
+            if (beat.lineBreak) {
+                const lineBreakElement = document.createElement('div');
+                lineBreakElement.classList.add('line-break');
+                beatsContainer.appendChild(lineBreakElement);
+            }
         });
     }
 
@@ -114,7 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function toggleBeatType(index) {
 
         // Toggle beat type
-        const types = ['normal', 'accented', 'muted'];
+        const types = ['normal', 'accented', 'soft', 'muted'];
         let currentTypeIndex = types.indexOf(beats[index].type);
         beats[index].type = types[(currentTypeIndex + 1) % types.length];
 
@@ -123,6 +146,12 @@ document.addEventListener("DOMContentLoaded", function () {
         applyBeatStylesForElement(beats[index], beatEl);
 
         // Save updated beats
+        saveSettings();
+    }
+
+    function toggleLineBreak(index) {
+        beats[index].lineBreak = !beats[index].lineBreak;
+        renderBeats();
         saveSettings();
     }
 
@@ -196,6 +225,10 @@ document.addEventListener("DOMContentLoaded", function () {
     function playBeat(index, time) {
         if (index >= 0 && index < beats.length) {
             const beat = beats[index];
+
+            // Always highlight the current beat, even if muted
+            highlightCurrentBeat(index);
+
             let buffer;
 
             switch (beat.type) {
@@ -205,13 +238,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 case 'normal':
                     buffer = unaccentedBuffer;
                     break;
+                case 'soft':
+                    buffer = unaccentedBuffer;
+                    break;
                 case 'muted':
-                    // Muted beats don't play sound
+                    // Muted beats don't play sound, but are still highlighted
                     return;
             }
 
             playSound(buffer, time);
-            highlightCurrentBeat(index);
         }
     }
 
