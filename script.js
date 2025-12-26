@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function toggleBeatType(index) {
 
         // Toggle beat type
-        const types = ['normal', 'accented', 'muted'];
+        const types = ['normal', 'accented', 'soft', 'muted'];
         let currentTypeIndex = types.indexOf(beats[index].type);
         beats[index].type = types[(currentTypeIndex + 1) % types.length];
 
@@ -236,6 +236,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     buffer = accentedBuffer;
                     break;
                 case 'normal':
+                    buffer = unaccentedBuffer;
+                    break;
+                case 'soft':
                     buffer = unaccentedBuffer;
                     break;
                 case 'muted':
