@@ -91,6 +91,7 @@ document.addEventListener("DOMContentLoaded", function () {
             beatElement.textContent = index + 1;
             beatElement.style.width = '40px';
             beatElement.style.height = '40px';
+            beatElement.dataset.beatIndex = index;
 
             // Apply the existing style for each beat
             applyBeatStylesForElement(beat, beatElement);
@@ -171,8 +172,10 @@ document.addEventListener("DOMContentLoaded", function () {
         beats[index].type = types[(currentTypeIndex + 1) % types.length];
 
         // Re-apply styles to just the toggled beat
-        const beatEl = beatsContainer.children[index];
-        applyBeatStylesForElement(beats[index], beatEl);
+        const beatEl = beatsContainer.querySelector(`[data-beat-index="${index}"]`);
+        if (beatEl) {
+            applyBeatStylesForElement(beats[index], beatEl);
+        }
 
         // Save updated beats
         saveSettings();
@@ -186,7 +189,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function highlightCurrentBeat(index) {
         clearBeatHighlighting();
-        beatsContainer.children[index].classList.add('beat-playing');
+        const beatElement = beatsContainer.querySelector(`[data-beat-index="${index}"]`);
+        if (beatElement) {
+            beatElement.classList.add('beat-playing');
+        }
     }
 
     document.getElementById('num-beats').addEventListener('change', (event) => {
