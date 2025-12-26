@@ -105,10 +105,38 @@ document.addEventListener("DOMContentLoaded", function () {
                 toggleBeatType(index);
             });
 
-            // Right click to toggle line break
+            // Right click to toggle line break (desktop)
             beatElement.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 toggleLineBreak(index);
+            });
+
+            // Long press to toggle line break (mobile)
+            let longPressTimer;
+            let touchStarted = false;
+
+            beatElement.addEventListener('touchstart', (e) => {
+                touchStarted = true;
+                longPressTimer = setTimeout(() => {
+                    if (touchStarted) {
+                        e.preventDefault();
+                        toggleLineBreak(index);
+                        // Vibrate if available to give feedback
+                        if (navigator.vibrate) {
+                            navigator.vibrate(50);
+                        }
+                    }
+                }, 500); // 500ms long press duration
+            });
+
+            beatElement.addEventListener('touchend', () => {
+                clearTimeout(longPressTimer);
+                touchStarted = false;
+            });
+
+            beatElement.addEventListener('touchmove', () => {
+                clearTimeout(longPressTimer);
+                touchStarted = false;
             });
 
             beatsContainer.appendChild(beatElement);
