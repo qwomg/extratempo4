@@ -22,10 +22,6 @@
 extratempo4/
 ├── index.html              # Main HTML file with UI structure and inline styles
 ├── script.js               # All application logic and event handlers
-├── sounds/
-│   ├── accented_beep.mp3   # Audio file for accented beats
-│   ├── unaccented_beep.mp3 # Audio file for normal beats
-│   └── soft_beep.mp3       # Audio file for soft beats (different sound, not just quieter)
 ├── package.json            # Minimal package file (only tailwindcss dev dependency)
 ├── tailwind.config.js      # Tailwind configuration (not actively used)
 ├── .gitignore              # Standard Node.js gitignore
@@ -65,9 +61,9 @@ Each beat is an object with three properties:
 ```
 
 **Beat Types:**
-- **Normal** (green, `#28a745`): Standard metronome click using unaccented beep
-- **Accented** (red, `#dc3545`): Emphasized beat using accented beep at full volume
-- **Soft** (purple, `#9b59b6`): Different sound using soft beep (distinct sound file, not just quieter)
+- **Normal** (green, `#28a745`): Standard metronome click at 800 Hz
+- **Accented** (red, `#dc3545`): Higher pitch at 1200 Hz with louder volume
+- **Soft** (purple, `#9b59b6`): Lower pitch at 600 Hz with quieter volume
 - **Muted** (gray, `#6c757d`): Silent beat - highlighted visually but no sound
 
 **Beat Interaction:**
@@ -79,12 +75,13 @@ Each beat is an object with three properties:
 
 **Web Audio API Implementation:**
 - `AudioContext` manages all audio operations
-- Three audio buffers preloaded on page load via `preloadSounds()`:
-  - `accentedBuffer` - for accented beats
-  - `unaccentedBuffer` - for normal beats
-  - `softBuffer` - for soft beats (distinct sound)
-- `playSound(buffer, time, volume)` schedules audio with precise timing
-- Gain nodes control volume per beat (all beat types play at full volume)
+- Sounds are **generated programmatically** using `OscillatorNode` (no audio files needed)
+- `playBeep(type, time)` creates beeps with different frequencies:
+  - **Accented**: 1200 Hz @ 0.3 gain
+  - **Normal**: 800 Hz @ 0.2 gain
+  - **Soft**: 600 Hz @ 0.15 gain
+- Attack-decay envelope (0.01s attack, 0.1s total duration) for clean beep sound
+- Gain nodes control volume per beat type
 
 **Scheduling Strategy:**
 - Look-ahead scheduling: schedules beats 100ms in advance
@@ -190,15 +187,11 @@ When making changes, verify:
 const types = ['normal', 'accented', 'soft', 'muted', 'newtype'];
 ```
 
-3. **Load new sound file in preloadSounds():**
-```javascript
-newtypeBuffer = await loadAudioBuffer('sounds/newtype_beep.mp3');
-```
-
-4. **Implement audio behavior in playBeat():**
+3. **Add sound configuration in playBeep() function:**
 ```javascript
 case 'newtype':
-    buffer = newtypeBuffer; // or use existing buffer
+    oscillator.frequency.value = 1000; // Set desired frequency in Hz
+    gainNode.gain.value = 0.25; // Set desired volume
     break;
 ```
 
@@ -341,7 +334,7 @@ Based on code structure and commit history:
 - **UI Structure**: `index.html`
 - **Styling**: `index.html` (inline styles) or add Bootstrap classes
 - **Logic/Behavior**: `script.js`
-- **Audio Files**: `sounds/` directory (MP3 format)
+- **Audio Generation**: `playBeep()` function in `script.js` (programmatic synthesis)
 
 ### Key Functions in script.js:
 - `loadSettings()` - Initialize from localStorage
@@ -351,7 +344,7 @@ Based on code structure and commit history:
 - `startMetronome()` / `stopMetronome()` - Playback control
 - `scheduleBeats(time)` - Look-ahead audio scheduling
 - `playBeat(index, time)` - Play single beat with appropriate sound
-- `playSound(buffer, time, volume)` - Web Audio API wrapper
+- `playBeep(type, time)` - Generate beep sound programmatically
 
 ### Important DOM IDs:
 - `#beats-container` - Flexbox container for beat blocks

@@ -1,34 +1,43 @@
 let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let accentedBuffer, unaccentedBuffer, softBuffer;
 let scheduledSounds = [];
 
-// Load the audio files
-async function preloadSounds() {
-    accentedBuffer = await loadAudioBuffer('sounds/accented_beep.mp3');
-    unaccentedBuffer = await loadAudioBuffer('sounds/unaccented_beep.mp3');
-    softBuffer = await loadAudioBuffer('sounds/soft_beep.mp3');
-}
-
-async function loadAudioBuffer(url) {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    return audioContext.decodeAudioData(arrayBuffer);
-}
-
-function playSound(buffer, time, volume = 1.0) {
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-
-    // Create gain node for volume control
+// Generate beep sounds programmatically using Web Audio API
+function playBeep(type, time) {
+    const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-    gainNode.gain.value = volume;
 
-    source.connect(gainNode);
+    // Configure sound based on type
+    switch(type) {
+        case 'accented':
+            oscillator.frequency.value = 1200; // Higher pitch for accent
+            gainNode.gain.value = 0.3;
+            break;
+        case 'normal':
+            oscillator.frequency.value = 800;  // Standard pitch
+            gainNode.gain.value = 0.2;
+            break;
+        case 'soft':
+            oscillator.frequency.value = 600;  // Lower pitch for soft
+            gainNode.gain.value = 0.15;
+            break;
+    }
+
+    // Shape the sound envelope (attack-decay)
+    const now = time || audioContext.currentTime;
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(gainNode.gain.value, now + 0.01); // Attack
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1); // Decay
+
+    // Connect nodes
+    oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
-    source.start(time);
 
-    // Keep track of the scheduled source
-    scheduledSounds.push({ source, time });
+    // Play the sound
+    oscillator.start(now);
+    oscillator.stop(now + 0.1);
+
+    // Keep track of scheduled sounds
+    scheduledSounds.push({ oscillator, time: now });
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -277,9 +286,13 @@ document.addEventListener("DOMContentLoaded", function () {
         startStopBtn.textContent = 'Start';
 
         // Stop and clear all scheduled sounds
-        scheduledSounds.forEach(({ source, time }) => {
-            if (time > audioContext.currentTime) {
-                source.stop();
+        scheduledSounds.forEach(({ oscillator, time }) => {
+            try {
+                if (time > audioContext.currentTime) {
+                    oscillator.stop();
+                }
+            } catch (e) {
+                // Oscillator may have already stopped
             }
         });
         scheduledSounds = []; // Reset the scheduled sounds
@@ -302,25 +315,10 @@ document.addEventListener("DOMContentLoaded", function () {
             // Always highlight the current beat, even if muted
             highlightCurrentBeat(index);
 
-            let buffer;
-            let volume = 1.0;
-
-            switch (beat.type) {
-                case 'accented':
-                    buffer = accentedBuffer;
-                    break;
-                case 'normal':
-                    buffer = unaccentedBuffer;
-                    break;
-                case 'soft':
-                    buffer = softBuffer;
-                    break;
-                case 'muted':
-                    // Muted beats don't play sound, but are still highlighted
-                    return;
+            // Play sound for non-muted beats
+            if (beat.type !== 'muted') {
+                playBeep(beat.type, time);
             }
-
-            playSound(buffer, time, volume);
         }
     }
 
@@ -371,7 +369,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    preloadSounds();
     loadSettings();
     renderBeats();
 });
