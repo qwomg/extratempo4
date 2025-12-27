@@ -1,11 +1,12 @@
 let audioContext = new (window.AudioContext || window.webkitAudioContext)();
-let accentedBuffer, unaccentedBuffer;
+let accentedBuffer, unaccentedBuffer, softBuffer;
 let scheduledSounds = [];
 
 // Load the audio files
 async function preloadSounds() {
     accentedBuffer = await loadAudioBuffer('sounds/accented_beep.mp3');
     unaccentedBuffer = await loadAudioBuffer('sounds/unaccented_beep.mp3');
+    softBuffer = await loadAudioBuffer('sounds/soft_beep.mp3');
 }
 
 async function loadAudioBuffer(url) {
@@ -312,8 +313,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     buffer = unaccentedBuffer;
                     break;
                 case 'soft':
-                    buffer = unaccentedBuffer;
-                    volume = 0.3;
+                    buffer = softBuffer;
                     break;
                 case 'muted':
                     // Muted beats don't play sound, but are still highlighted

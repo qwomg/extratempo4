@@ -24,7 +24,8 @@ extratempo4/
 ├── script.js               # All application logic and event handlers
 ├── sounds/
 │   ├── accented_beep.mp3   # Audio file for accented beats
-│   └── unaccented_beep.mp3 # Audio file for normal/soft beats
+│   ├── unaccented_beep.mp3 # Audio file for normal beats
+│   └── soft_beep.mp3       # Audio file for soft beats (different sound, not just quieter)
 ├── package.json            # Minimal package file (only tailwindcss dev dependency)
 ├── tailwind.config.js      # Tailwind configuration (not actively used)
 ├── .gitignore              # Standard Node.js gitignore
@@ -66,7 +67,7 @@ Each beat is an object with three properties:
 **Beat Types:**
 - **Normal** (green, `#28a745`): Standard metronome click using unaccented beep
 - **Accented** (red, `#dc3545`): Emphasized beat using accented beep at full volume
-- **Soft** (purple, `#9b59b6`): Quieter beat using unaccented beep at 0.3 volume
+- **Soft** (purple, `#9b59b6`): Different sound using soft beep (distinct sound file, not just quieter)
 - **Muted** (gray, `#6c757d`): Silent beat - highlighted visually but no sound
 
 **Beat Interaction:**
@@ -78,9 +79,12 @@ Each beat is an object with three properties:
 
 **Web Audio API Implementation:**
 - `AudioContext` manages all audio operations
-- Audio buffers preloaded on page load via `preloadSounds()`
+- Three audio buffers preloaded on page load via `preloadSounds()`:
+  - `accentedBuffer` - for accented beats
+  - `unaccentedBuffer` - for normal beats
+  - `softBuffer` - for soft beats (distinct sound)
 - `playSound(buffer, time, volume)` schedules audio with precise timing
-- Gain nodes control volume per beat (soft beats use 0.3 gain)
+- Gain nodes control volume per beat (all beat types play at full volume)
 
 **Scheduling Strategy:**
 - Look-ahead scheduling: schedules beats 100ms in advance
@@ -186,11 +190,15 @@ When making changes, verify:
 const types = ['normal', 'accented', 'soft', 'muted', 'newtype'];
 ```
 
-3. **Implement audio behavior in playBeat():**
+3. **Load new sound file in preloadSounds():**
+```javascript
+newtypeBuffer = await loadAudioBuffer('sounds/newtype_beep.mp3');
+```
+
+4. **Implement audio behavior in playBeat():**
 ```javascript
 case 'newtype':
-    buffer = unaccentedBuffer; // or accentedBuffer
-    volume = 0.5; // adjust as needed
+    buffer = newtypeBuffer; // or use existing buffer
     break;
 ```
 
